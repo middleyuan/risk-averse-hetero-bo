@@ -1,8 +1,8 @@
 from botorch.models import FixedNoiseGP, SingleTaskGP
-from rabo.acquisition.acquisition import RiskAverseUpperConfidenceBound, UpperConfidenceBound, LowerConfidenceBound
+from rahbo.acquisition.acquisition import RiskAverseUpperConfidenceBound, UpperConfidenceBound, LowerConfidenceBound
 import torch
 from torch import Tensor
-from rabo.optimization.bo_loop import bo_loop_learn_rho, evaluate_rho_mean
+from rahbo.optimization.bo_loop import bo_loop_learn_rho, evaluate_rho_mean
 
 
 def transform_x_to_tensor(df_values) -> Tensor:
