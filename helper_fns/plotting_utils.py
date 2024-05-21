@@ -73,7 +73,7 @@ def plot_objectives(objectives, path_to_save=None, thresholds=None, objective_na
 
 
 def plot_objectives_mean_std(objectives, path_to_save=None, thresholds=None,
-                             objective_name='',
+                             objective_name='', x_label='BO iterations',
                              title='', color=None, linestyles=None, legend=True, yscale=None, ylim=None):
     """
 
@@ -135,7 +135,7 @@ def plot_objectives_mean_std(objectives, path_to_save=None, thresholds=None,
                         color=c)
 
 
-    ax.set_xlabel('BO iterations', fontsize=25)
+    ax.set_xlabel(x_label, fontsize=25)
     ax.set_ylabel(objective_name, fontsize=25)
     ax.set_title(title)
     ax.grid(True)

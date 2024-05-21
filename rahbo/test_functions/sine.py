@@ -20,17 +20,31 @@ class SineBenchmark(BenchmarkBase):
         self._max_value = 1
         self.seed_test = 42
 
-    def evaluate(self, x: Tensor, seed_eval=None) -> Tensor:
+    def evaluate(self, x: Tensor, seed_eval=None, return_eval_times=False, repeat_eval=None) -> Tensor:
         y_true = self.f(x)
         sigmas = self.get_noise_var(x)
 
         if seed_eval is not None:
-            shape = torch.cat([y_true] * self.repeat_eval, dim=1).shape
-            y = y_true + sigmas * torch.randn(shape, generator=torch.Generator().manual_seed(seed_eval))
+            if repeat_eval is not None:
+                shape = torch.cat([y_true] * repeat_eval, dim=1).shape
+                y = y_true + sigmas * torch.randn(shape, generator=torch.Generator().manual_seed(seed_eval))
+            else:
+                shape = torch.cat([y_true] * self.repeat_eval, dim=1).shape
+                y = y_true + sigmas * torch.randn(shape, generator=torch.Generator().manual_seed(seed_eval))
         else:
-            y_true = torch.cat([y_true] * self.repeat_eval, dim=1)
-            y = y_true + sigmas.reshape((-1, 1)) * torch.randn_like(y_true)
-        return y
+            if repeat_eval is not None:
+                y_true = torch.cat([y_true] * repeat_eval, dim=1)
+                y = y_true + sigmas.reshape((-1, 1)) * torch.randn_like(y_true)
+            else:
+                y_true = torch.cat([y_true] * self.repeat_eval, dim=1)
+                y = y_true + sigmas.reshape((-1, 1)) * torch.randn_like(y_true)
+        if return_eval_times:
+            if repeat_eval is not None:
+                return y, repeat_eval
+            else:
+                return y, self.repeat_eval
+        else:
+            return y
 
     def evaluate_on_test(self, x: Tensor) -> Tensor:
 

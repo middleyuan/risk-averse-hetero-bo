@@ -95,7 +95,7 @@ class RiskAverseUpperConfidenceBound(AnalyticAcquisitionFunction):
         return posterior
 
     @t_batch_mode_transform(expected_q=1)
-    def forward(self, X: Tensor) -> Tensor:
+    def forward(self, X: Tensor, rule=False) -> Tensor:
         r"""Evaluate the Upper Confidence Bound on the candidate set X.
 
         Args:
@@ -122,6 +122,8 @@ class RiskAverseUpperConfidenceBound(AnalyticAcquisitionFunction):
         # ucb = ucb_f - gamma*lcb_{rho}
         if self.maximize:
             return (mean + delta - self.gamma.expand_as(mean_varproxi) * (mean_varproxi - delta_varproxi))
+        elif rule:
+            return mean + self.gamma.expand_as(mean_varproxi) * (mean_varproxi)
         # lcb = lcb_f - gamma*ucb_{rho}
         else:
             return (mean - delta - self.gamma.expand_as(mean_varproxi) * (mean_varproxi + delta_varproxi))
@@ -192,7 +194,7 @@ class LowerConfidenceBound(AnalyticAcquisitionFunction):
             beta = torch.tensor(beta)
         self.register_buffer("beta", beta)
 
-    def forward(self, X: Tensor) -> Tensor:
+    def forward(self, X: Tensor, posterior_mean=False) -> Tensor:
         r"""Evaluate the Upper Confidence Bound on the candidate set X.
 
         Args:
@@ -211,5 +213,7 @@ class LowerConfidenceBound(AnalyticAcquisitionFunction):
         delta = (self.beta.expand_as(mean) * variance).sqrt()
         if self.maximize:
             return -mean - delta
+        elif posterior_mean:
+            return mean
         else:
             return mean - delta
