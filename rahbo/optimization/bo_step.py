@@ -1,12 +1,13 @@
 from botorch.optim import optimize_acqf
 from botorch.models import SingleTaskGP, FixedNoiseGP
+from botorch.models.transforms import Normalize, Standardize
 from gpytorch.mlls import ExactMarginalLogLikelihood
 from botorch.fit import fit_gpytorch_model
 import torch
 from copy import deepcopy
 
 
-def initialize_model(X, y, GP=None, state_dict=None, *GP_args, **GP_kwargs):
+def initialize_model(X, y, bounds, GP=None, state_dict=None, *GP_args, **GP_kwargs):
     """
     Create GP model and fit it. The function also accepts
     state_dict which is used as an initialization for the GP model.
@@ -36,7 +37,9 @@ def initialize_model(X, y, GP=None, state_dict=None, *GP_args, **GP_kwargs):
     if GP is None:
         GP = SingleTaskGP
 
-    model = GP(X, y, *GP_args, **GP_kwargs).to(X)
+    m = y.shape[1]
+    d = X.shape[1]
+    model = GP(X, y, outcome_transform=Standardize(m=m), input_transform=Normalize(d=d, bounds=bounds), *GP_args, **GP_kwargs).to(X)
 
     mll = ExactMarginalLogLikelihood(model.likelihood, model)
     # load state dict if it is passed
@@ -45,7 +48,7 @@ def initialize_model(X, y, GP=None, state_dict=None, *GP_args, **GP_kwargs):
     return mll, model
 
 
-def bo_step_risk_averse(X, y, X_input_query, objective, bounds, GP=None, acquisition=None, 
+def bo_step_risk_averse(X, y, X_input_query, objective, bounds, repeat_eval, GP=None, acquisition=None, 
                         q=1, state_dict=None, input_query=False, *GP_args, **GP_kwargs):
     """
     One iteration of Bayesian optimization:
@@ -112,11 +115,11 @@ def bo_step_risk_averse(X, y, X_input_query, objective, bounds, GP=None, acquisi
     yvar = GP_kwargs.get('train_Yvar')
 
     # Create GP model
-    mll, gp = initialize_model(X, y, GP=GP, state_dict=state_dict, train_Yvar=yvar)
+    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, train_Yvar=yvar)
     fit_gpytorch_model(mll)
 
     # Variance model
-    mll_varproxi, gp_varproxi = initialize_model(X, yvar, GP=SingleTaskGP, state_dict=None)
+    mll_varproxi, gp_varproxi = initialize_model(X, yvar, bounds, GP=SingleTaskGP, state_dict=None)
     fit_gpytorch_model(mll_varproxi)
 
     # Create acquisition function
@@ -129,8 +132,11 @@ def bo_step_risk_averse(X, y, X_input_query, objective, bounds, GP=None, acquisi
 
     # Update data set
     if input_query:
-        ys, eval_times = objective(candidate, return_eval_times=True)
-        X = torch.cat([X, candidate])
+        tran_X, ys, eval_times = objective(candidate, repeat_eval, return_eval_times=True)
+        if tran_X is None:
+            X = torch.cat([X, candidate])
+        else:
+            X = torch.cat([X, tran_X])
         y = torch.cat([y, ys.mean(dim=1).reshape((-1, 1))])
         X_input_query = torch.cat([X_input_query, torch.cat([candidate] * eval_times)])
     else:
@@ -138,7 +144,7 @@ def bo_step_risk_averse(X, y, X_input_query, objective, bounds, GP=None, acquisi
         y = torch.cat([y, objective(candidate).mean(dim=1).reshape((-1, 1))])
     
     if yvar is not None:
-        yvar = torch.cat([yvar, objective(candidate).var(dim=1).reshape((-1, 1))])
+        yvar = torch.cat([yvar, ys.var(dim=1).reshape((-1, 1))])
 
     if yvar is not None:
         if input_query:
@@ -218,11 +224,11 @@ def bo_step_adaptive_risk_averse(X, y, X_input_query, gamma, current_best, min_r
     yvar = GP_kwargs.get('train_Yvar')
 
     # Create GP model
-    mll, gp = initialize_model(X, y, GP=GP, state_dict=state_dict, train_Yvar=yvar)
+    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, train_Yvar=yvar)
     fit_gpytorch_model(mll)
 
     # Variance model
-    mll_varproxi, gp_varproxi = initialize_model(X, yvar, GP=SingleTaskGP, state_dict=None)
+    mll_varproxi, gp_varproxi = initialize_model(X, yvar, bounds, GP=SingleTaskGP, state_dict=None)
     fit_gpytorch_model(mll_varproxi)
 
     # Create acquisition function
@@ -235,17 +241,20 @@ def bo_step_adaptive_risk_averse(X, y, X_input_query, gamma, current_best, min_r
 
     # Update data set
     if input_query:
-        ys, eval_times = objective(candidate, return_eval_times=True, repeat_eval=min_repeat_eval)
+        tran_X, ys, eval_times = objective(candidate, return_eval_times=True, repeat_eval=min_repeat_eval)
         while ys.mean() + gamma * ys.var() > current_best and eval_times < max_repeat_eval:
             if eval_times + min_repeat_eval <= max_repeat_eval:
-                ys_, eval_times_ = objective(candidate, return_eval_times=True, repeat_eval=min_repeat_eval)
+                tran_X, ys_, eval_times_ = objective(candidate, return_eval_times=True, repeat_eval=min_repeat_eval)
                 ys = torch.cat([ys, ys_], dim=1)
                 eval_times = eval_times + eval_times_
             else:
-                ys_, eval_times_ = objective(candidate, return_eval_times=True, repeat_eval=max_repeat_eval - eval_times)
+                tran_X, ys_, eval_times_ = objective(candidate, return_eval_times=True, repeat_eval=max_repeat_eval - eval_times)
                 ys = torch.cat([ys, ys_], dim=1)
                 eval_times = eval_times + eval_times_
-        X = torch.cat([X, candidate])
+        if tran_X is None:   
+            X = torch.cat([X, candidate])
+        else:
+            X = torch.cat([X, tran_X])
         y = torch.cat([y, ys.mean(dim=1).reshape((-1, 1))])
         X_input_query = torch.cat([X_input_query, torch.cat([candidate] * eval_times)])
     else:
@@ -270,7 +279,7 @@ def bo_step_adaptive_risk_averse(X, y, X_input_query, gamma, current_best, min_r
             return X, y, gp
 
 
-def bo_step(X, y, X_input_query, objective, bounds, GP=None, acquisition=None, q=1, state_dict=None, input_query=False, *GP_args,
+def bo_step(X, y, X_input_query, objective, bounds, repeat_eval, GP=None, acquisition=None, q=1, state_dict=None, input_query=False, *GP_args,
             **GP_kwargs):
     """
     One iteration of Bayesian optimization:
@@ -337,7 +346,7 @@ def bo_step(X, y, X_input_query, objective, bounds, GP=None, acquisition=None, q
     yvar = GP_kwargs.get('train_Yvar')
 
     # Create GP model
-    mll, gp = initialize_model(X, y, GP=GP, state_dict=state_dict, *GP_args, **GP_kwargs)
+    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, *GP_args, **GP_kwargs)
     fit_gpytorch_model(mll)
 
     # Create acquisition function
@@ -350,8 +359,11 @@ def bo_step(X, y, X_input_query, objective, bounds, GP=None, acquisition=None, q
 
     # Update data set
     if input_query:
-        ys, eval_times = objective(candidate, return_eval_times=True)
-        X = torch.cat([X, candidate])
+        tran_X, ys, eval_times = objective(candidate, repeat_eval, return_eval_times=True)
+        if tran_X is None:
+            X = torch.cat([X, candidate])
+        else:
+            X = torch.cat([X, tran_X])
         y = torch.cat([y, ys.mean(dim=1).reshape((-1, 1))])
         X_input_query = torch.cat([X_input_query, torch.cat([candidate] * eval_times)])
     else:
@@ -359,7 +371,7 @@ def bo_step(X, y, X_input_query, objective, bounds, GP=None, acquisition=None, q
         y = torch.cat([y, objective(candidate).mean(dim=1).reshape((-1, 1))])
 
     if yvar is not None:
-        yvar = torch.cat([GP_kwargs['train_Yvar'], objective(candidate).var(dim=1).reshape((-1, 1))])
+        yvar = torch.cat([GP_kwargs['train_Yvar'], ys.var(dim=1).reshape((-1, 1))])
 
     if yvar is not None:
         if input_query:

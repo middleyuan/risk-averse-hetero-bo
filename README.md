@@ -6,7 +6,10 @@ Risk-averse heteroscedastic Bayesian optimization algorithm (RAHBO) aims to iden
 
 ### Installion in depelop mode:
 ```console
+$ conda create -n erahbo python=3.7.16
+$ conda activate erahbo
 $ pip install -r requirements.txt
+$ pip install filelock
 $ pip install -e .
 ```
 

@@ -40,9 +40,9 @@ class SineBenchmark(BenchmarkBase):
                 y = y_true + sigmas.reshape((-1, 1)) * torch.randn_like(y_true)
         if return_eval_times:
             if repeat_eval is not None:
-                return y, repeat_eval
+                return None, y, repeat_eval
             else:
-                return y, self.repeat_eval
+                return None, y, self.repeat_eval
         else:
             return y
 
