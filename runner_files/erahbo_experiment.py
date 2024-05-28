@@ -46,11 +46,12 @@ parser.add_argument('--min_repeat_eval', type=int, default=2,
                     help='minimum number of evaluations at the same point')
 parser.add_argument('--output_dir', type=str, default='../../../examples/hpo/quadrotor_2D_attitude',
                     help='output directory relative to the path to quadrotor_2D.py')
-parser.add_argument('--metric', type=str, default='average_rmse',)
+parser.add_argument('--metric', type=str, default='average_rmse')
+parser.add_argument('--max_processes', type=int, default=2)
 
 
 def main(args):
-    benchmark = Quad2DBenchmark(args.algo, args.output_dir, args.metric, args.BO_algo)
+    benchmark = Quad2DBenchmark(args.algo, args.output_dir, args.metric, args.BO_algo, args.max_processes)
     # print args
     print(args)
     objective = benchmark.evaluate

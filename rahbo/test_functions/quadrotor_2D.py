@@ -82,10 +82,11 @@ class Quad2DBenchmark(BenchmarkBase):
     Two-dimentional Quadrotor environment.
     """
 
-    def __init__(self, algo, output_dir, metric, BO_algo, negate=True):
+    def __init__(self, algo, output_dir, metric, BO_algo, max_processes, negate=True):
         super(Quad2DBenchmark, self).__init__()
         self.algo = algo
         self.output_dir = output_dir
+        self.max_processes = max_processes
         self.protocol = {'state': 'idle', 'metric': metric, 'algo': algo, 'BO_algo': BO_algo}
         # make self.output_dir
         self.path = os.path.abspath(os.path.join(os.path.dirname(__file__), self.output_dir, BO_algo))
@@ -103,7 +104,7 @@ class Quad2DBenchmark(BenchmarkBase):
         self.negate = negate
         self.count = 0
 
-    def evaluate(self, x: Tensor, repeat_eval, return_eval_times=True, max_processes=2, mode='train'):
+    def evaluate(self, x: Tensor, repeat_eval, return_eval_times=True, mode='train'):
         # prepare protocol
         self.count += 1
         self.protocol['raw_x'] = x.tolist()
@@ -112,7 +113,7 @@ class Quad2DBenchmark(BenchmarkBase):
         self.protocol['state'] = 'request'
         self.protocol['hps'] = hp_configs
         self.protocol['repeat_eval'] = repeat_eval
-        self.protocol['max_processes'] = max_processes
+        self.protocol['max_processes'] = self.max_processes
         self.protocol['mode'] = mode
         # create a lock
         lock = FileLock(f'{self.path}/protocol.yaml.lock')
