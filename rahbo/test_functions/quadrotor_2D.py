@@ -22,8 +22,8 @@ PPO_dict = {
         'max_env_steps': [30000, 72000, 114000, 156000, 216000],  # to make sure having the checkpoint at these steps [30000, 72000, 216000]
     },
     'float': {  # note that in float type, you must specify the upper and lower bound
-        'target_kl': [0.00000001, 0.8],
-        'entropy_coef': [0.00000001, 0.1],
+        'target_kl': [math.log(0.00000001, 10), math.log(0.8, 10)],
+        'entropy_coef': [math.log(0.00000001, 10), math.log(0.1, 10)],
         'actor_lr': [math.log(1e-5, 10), math.log(0.5, 10)],
         'critic_lr': [math.log(1e-5, 10), math.log(0.5, 10)],
         'state_weight': [0.001, 20],
