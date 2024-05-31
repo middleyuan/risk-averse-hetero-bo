@@ -14,18 +14,18 @@ PPO_dict = {
         'hidden_dim': [8, 16, 32, 64, 128, 256, 512],
         'activation': [0, 1, 2], # ['tanh', 'relu', 'leaky_relu']
         'gamma': [0.9, 0.95, 0.98, 0.99, 0.995, 0.999, 0.9999],
-        'opt_epochs': [1, 5, 10, 15, 20],
-        'mini_batch_size': [32, 64, 128, 256, 512],
-        'rollout_steps': [100, 200, 400, 1200, 2000, 6000], # steps increment by rollout_steps * n_envs
-        'max_env_steps': [30000, 72000, 114000, 156000, 216000, 330000, 486000],  # to make sure having the checkpoint at these steps [30000, 72000, 216000]
+        'gae_lambda': [0.8, 0.9, 0.92, 0.95, 0.98, 0.99, 1.0],
+        'clip_param': [0.1, 0.2, 0.3, 0.4],
+        'opt_epochs': [1, 5, 10, 20],
+        'mini_batch_size': [32, 64, 128, 256],
+        'rollout_steps': [100, 150, 200], # steps increment by rollout_steps * n_envs
+        'max_env_steps': [30000, 72000, 114000, 156000, 216000],  # to make sure having the checkpoint at these steps [30000, 72000, 216000]
     },
     'float': {  # note that in float type, you must specify the upper and lower bound
         'actor_lr': [math.log(1e-5, 10), math.log(0.5, 10)],
         'critic_lr': [math.log(1e-5, 10), math.log(0.5, 10)],
-        'target_kl': [0.001, 0.1],
-        'entropy_coef': [0.0, 0.4],
-        'gae_lambda': [0.8, 0.9999],
-        'clip_param': [0.0, 0.5],
+        'target_kl': [0.001, 0.8],
+        'entropy_coef': [0.001, 0.1],
         'state_weight': [0.001, 20],
         'state_dot_weight': [0.001, 5],
         'action_weight': [0.001, 5],
