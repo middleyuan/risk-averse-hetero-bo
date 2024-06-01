@@ -29,7 +29,7 @@ labels = {'raucb_gamma0.5': 'RAHBO $\\alpha=0.5$',
 
 
 def plot_objectives(objectives, path_to_save=None, thresholds=None, objective_name='',
-                    title=''):
+                    x_label='BO iterations', title=''):
     """
 
     :param objectives:
@@ -59,7 +59,7 @@ def plot_objectives(objectives, path_to_save=None, thresholds=None, objective_na
                 color=color[k],
                 label=name)
 
-    ax.set_xlabel('BO iterations')
+    ax.set_xlabel(x_label)
     ax.set_ylabel(objective_name)
     ax.set_title(title)
     ax.legend(ncol=1, loc='best', )
@@ -72,7 +72,7 @@ def plot_objectives(objectives, path_to_save=None, thresholds=None, objective_na
     return fig, ax
 
 
-def plot_objectives_mean_std(objectives, path_to_save=None, thresholds=None,
+def plot_objectives_mean_std(objectives, objective_var=None, path_to_save=None, thresholds=None,
                              objective_name='', x_label='BO iterations',
                              title='', color=None, linestyles=None, legend=True, yscale=None, ylim=None):
     """
@@ -118,6 +118,7 @@ def plot_objectives_mean_std(objectives, path_to_save=None, thresholds=None,
 
         if name == 'RAHBO-US $\\alpha=2$ iter 1':
             name = 'RAHBO-US $\\alpha=2$'
+        
         mean = objective.mean(axis=1)
         std = objective.std(axis=1)/np.sqrt(objective.shape[1])
         ax.plot(np.arange(threshold, threshold+len(mean)),
