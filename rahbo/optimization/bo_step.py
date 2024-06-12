@@ -7,7 +7,7 @@ import torch
 from copy import deepcopy
 
 
-def initialize_model(X, y, bounds, GP=None, state_dict=None, *GP_args, **GP_kwargs):
+def initialize_model(X, y, bounds, GP=None, state_dict=None, standardize=True, *GP_args, **GP_kwargs):
     """
     Create GP model and fit it. The function also accepts
     state_dict which is used as an initialization for the GP model.
@@ -39,7 +39,10 @@ def initialize_model(X, y, bounds, GP=None, state_dict=None, *GP_args, **GP_kwar
 
     m = y.shape[1]
     d = X.shape[1]
-    model = GP(X, y, outcome_transform=Standardize(m=m), input_transform=Normalize(d=d, bounds=bounds), *GP_args, **GP_kwargs).to(X)
+    if standardize:
+        model = GP(X, y, outcome_transform=Standardize(m=m), input_transform=Normalize(d=d, bounds=bounds), *GP_args, **GP_kwargs).to(X)
+    else:
+        model = GP(X, y, input_transform=Normalize(d=d, bounds=bounds), *GP_args, **GP_kwargs).to(X)
 
     mll = ExactMarginalLogLikelihood(model.likelihood, model)
     # load state dict if it is passed
@@ -49,7 +52,7 @@ def initialize_model(X, y, bounds, GP=None, state_dict=None, *GP_args, **GP_kwar
 
 
 def bo_step_risk_averse(X, y, X_input_query, objective, bounds, repeat_eval, GP=None, acquisition=None, 
-                        q=1, state_dict=None, input_query=False, *GP_args, **GP_kwargs):
+                        q=1, state_dict=None, input_query=False, standardize=True, *GP_args, **GP_kwargs):
     """
     One iteration of Bayesian optimization:
         1. Fit GP model using (X, y)
@@ -115,11 +118,11 @@ def bo_step_risk_averse(X, y, X_input_query, objective, bounds, repeat_eval, GP=
     yvar = GP_kwargs.get('train_Yvar')
 
     # Create GP model
-    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, train_Yvar=yvar)
+    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, standardize=standardize, train_Yvar=yvar)
     fit_gpytorch_model(mll)
 
     # Variance model
-    mll_varproxi, gp_varproxi = initialize_model(X, yvar, bounds, GP=SingleTaskGP, state_dict=None)
+    mll_varproxi, gp_varproxi = initialize_model(X, yvar, bounds, GP=SingleTaskGP, state_dict=None, standardize=standardize)
     fit_gpytorch_model(mll_varproxi)
 
     # Create acquisition function
@@ -158,7 +161,7 @@ def bo_step_risk_averse(X, y, X_input_query, objective, bounds, repeat_eval, GP=
             return X, y, gp
         
 def bo_step_adaptive_risk_averse(X, y, X_input_query, gamma, current_best, min_repeat_eval, max_repeat_eval, eval_budgets, objective, bounds, GP=None, acquisition=None,
-                                 q=1, state_dict=None, input_query=False, *GP_args, **GP_kwargs):
+                                 q=1, state_dict=None, input_query=False, standardize=True, *GP_args, **GP_kwargs):
     """
     One iteration of Bayesian optimization:
         1. Fit GP model using (X, y)
@@ -224,11 +227,11 @@ def bo_step_adaptive_risk_averse(X, y, X_input_query, gamma, current_best, min_r
     yvar = GP_kwargs.get('train_Yvar')
 
     # Create GP model
-    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, train_Yvar=yvar)
+    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, standardize=standardize, train_Yvar=yvar)
     fit_gpytorch_model(mll)
 
     # Variance model
-    mll_varproxi, gp_varproxi = initialize_model(X, yvar, bounds, GP=SingleTaskGP, state_dict=None)
+    mll_varproxi, gp_varproxi = initialize_model(X, yvar, bounds, GP=SingleTaskGP, state_dict=None, standardize=standardize)
     fit_gpytorch_model(mll_varproxi)
 
     # Create acquisition function
@@ -279,7 +282,7 @@ def bo_step_adaptive_risk_averse(X, y, X_input_query, gamma, current_best, min_r
             return X, y, gp
 
 
-def bo_step(X, y, X_input_query, objective, bounds, repeat_eval, GP=None, acquisition=None, q=1, state_dict=None, input_query=False, *GP_args,
+def bo_step(X, y, X_input_query, objective, bounds, repeat_eval, GP=None, acquisition=None, q=1, state_dict=None, input_query=False, standardize=True, *GP_args,
             **GP_kwargs):
     """
     One iteration of Bayesian optimization:
@@ -346,7 +349,7 @@ def bo_step(X, y, X_input_query, objective, bounds, repeat_eval, GP=None, acquis
     yvar = GP_kwargs.get('train_Yvar')
 
     # Create GP model
-    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, *GP_args, **GP_kwargs)
+    mll, gp = initialize_model(X, y, bounds, GP=GP, state_dict=state_dict, standardize=standardize, *GP_args, **GP_kwargs)
     fit_gpytorch_model(mll)
 
     # Create acquisition function
