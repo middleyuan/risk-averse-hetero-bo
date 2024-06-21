@@ -63,6 +63,12 @@ class Pendulum(BenchmarkBase):
             os.makedirs(self.path)
         print(f'output_dir: {self.path}')
         self.rescale = rescale
+        self.train_count = 0
+        self.test_count = 0
+        self.eval_y = None
+        self.eval_y_var = None
+        self.eval_scaled_y = None
+        self.eval_scaled_y_var = None
 
     def evaluate(self, x: Tensor, repeat_eval, return_eval_times=True, mode='train'):
         x_copy, indx = self.transform_search_space(x)
@@ -126,9 +132,13 @@ class Pendulum(BenchmarkBase):
             
             for i in range(repeat_eval):
                 if mode == 'train':
+                    np.random.seed(self.train_count)
                     seed = np.random.randint(0, 10000)
+                    self.train_count += 1
                 else:
+                    np.random.seed(self.test_count)
                     seed = np.random.randint(10000, 20000)
+                    self.test_count += 1
                 p = Process(target=objective, args=(seed, hps['ACTOR_ALPHA'], hps['CRITIC_ALPHA'], result_metrics, i))
                 processes.append(p)
 
@@ -152,6 +162,18 @@ class Pendulum(BenchmarkBase):
             if self.rescale == True:
                 # y = -torch.log(y)
                 y = -torch.log(-y)
+        else:
+            scaled_y = -torch.log(-y)
+            if self.eval_scaled_y is None and self.eval_scaled_y_var is None and self.eval_y is None and self.eval_y_var is None:
+                self.eval_y = y.mean(dim=1, keepdim=True)
+                self.eval_y_var = y.var(dim=1, keepdim=True)
+                self.eval_scaled_y = scaled_y.mean(dim=1, keepdim=True)
+                self.eval_scaled_y_var = scaled_y.var(dim=1, keepdim=True)
+            else:
+                self.eval_y = torch.cat((self.eval_y, y.mean(dim=1).reshape(-1, 1)))
+                self.eval_y_var = torch.cat((self.eval_y_var, y.var(dim=1).reshape(-1, 1)))
+                self.eval_scaled_y = torch.cat((self.eval_scaled_y, scaled_y.mean(dim=1).reshape(-1, 1)))
+                self.eval_scaled_y_var = torch.cat((self.eval_scaled_y_var, scaled_y.var(dim=1).reshape(-1, 1)))
         
         return x_copy, y, repeat_eval
 

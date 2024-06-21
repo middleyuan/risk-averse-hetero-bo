@@ -40,7 +40,7 @@ parser.add_argument('--repeat_eval', type=int, default=10,
                     help='number of evaluations at the same point')
 parser.add_argument('--beta', type=int, default=2,
                     help='hyperparameter for UCB acquisition function')
-parser.add_argument('--n_bo_restarts', type=int, default=3,
+parser.add_argument('--n_bo_restarts', type=int, default=10,
                     help='number of BO restarts')
 parser.add_argument('--n_initial', type=int, default=20,
                     help='number of initial points for BO')
@@ -48,7 +48,8 @@ parser.add_argument('--min_repeat_eval', type=int, default=4,
                     help='minimum number of evaluations at the same point')
 parser.add_argument('--output_dir', type=str, default='../../hpo/pendulum',
                     help='output directory relative to the path to pendulum.py')
-parser.add_argument('--max_processes', type=int, default=7)
+parser.add_argument('--max_processes', type=int, default=10)
+parser.add_argument('--eval_seeds', type=int, default=20)
 
 def run_experiment(args_dict):
     args = argparse.Namespace(**args_dict)
@@ -63,7 +64,12 @@ def run_experiment(args_dict):
 
     results_all = []
     for restart in range(args.n_bo_restarts):
-        
+        benchmark.eval_y = None
+        benchmark.eval_y_var = None
+        benchmark.eval_scaled_y = None
+        benchmark.eval_scaled_y_var = None
+        benchmark.train_count = 0
+        benchmark.test_count = 0
         results = {}
         idxs = []
         
@@ -169,7 +175,7 @@ def run_experiment(args_dict):
                 best_observed.append(scores.max())
             # eval reporting
             report_x = inputs[idxs[-1]]
-            _, report_y, _ = objective(report_x, repeat_eval=args.repeat_eval, mode='test')
+            _, report_y, _ = objective(report_x, repeat_eval=args.eval_seeds, mode='test')
             report_ymean = report_y.mean(dim=1).reshape(-1, 1)
             report_yvar = report_y.var(dim=1).reshape(-1, 1)
             eval_scores = torch.cat([eval_scores, report_ymean])
@@ -183,6 +189,10 @@ def run_experiment(args_dict):
         results['scores_var'] = scores_var
         results['eval_scores'] = eval_scores
         results['eval_scores_var'] = eval_scores_var
+        results['eval_y'] = benchmark.eval_y
+        results['eval_y_var'] = benchmark.eval_y_var
+        results['eval_scaled_y'] = benchmark.eval_scaled_y
+        results['eval_scaled_y_var'] = benchmark.eval_scaled_y_var
         results['scores_best'] = best_observed
         results['gps'] = gps_state_dict
         results['gps_var'] = gps_var_state_dict
