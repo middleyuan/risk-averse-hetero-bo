@@ -158,6 +158,161 @@ def plot_objectives_mean_std(objectives, objective_var=None, path_to_save=None, 
 
     return fig, ax
 
+def plot_objectives_mean_best_worst(objectives, objective_var=None, path_to_save=None, thresholds=None,
+                                    objective_name='', x_label='BO iterations',
+                                    title='', color=None, linestyles=None, legend=True, yscale=None, ylim=None):
+    """
+    Plot objectives with mean, best, and worst values
+
+    :param objectives: dict of objectives
+    :param path_to_save: path to save the plot
+    :param thresholds: dict of thresholds for each objective
+    :param objective_name: name of the objective
+    :param x_label: label for x-axis
+    :param title: title of the plot
+    :param color: color scheme for the plot
+    :param linestyles: line styles for each objective
+    :param legend: whether to show legend
+    :param yscale: scale for y-axis
+    :param ylim: limits for y-axis
+    :return: figure and axis objects
+    """
+    if color is None:
+        if len(objectives) < 9:
+            color = cm.Dark2(np.linspace(0, 1, 8))
+        else:
+            color = cm.Dark2(np.linspace(0, 1, len(objectives)))
+
+    if linestyles is None:
+        if len(objectives) < 5:
+            linestyles = ['-', '--', '-.', 'dotted']
+        else:
+            linestyles = ['-', '--', '-.', 'dotted']*len(objectives)
+
+    fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    for k, name in enumerate(objectives.keys()):
+        if isinstance(linestyles, dict):
+            ls = linestyles[name]
+        else:
+            ls = linestyles[k]
+
+        if isinstance(color, dict):
+            c = color[name]
+        else:
+            c = color[k]
+
+        if thresholds is not None:
+            threshold = thresholds[name]
+        else:
+            threshold = 0
+        objective = objectives[name]
+        objective = objective[threshold:]
+
+        if name == 'RAHBO-US $\\alpha=2$ iter 1':
+            name = 'RAHBO-US $\\alpha=2$'
+        
+        # Ensure we're working with numpy arrays
+        if hasattr(objective, 'cpu'):
+            objective = objective.cpu().numpy()
+        else:
+            objective = np.array(objective)
+        
+        mean = np.mean(objective, axis=1)
+        best = np.min(objective, axis=1)  # Best values (minimum)
+        worst = np.max(objective, axis=1)  # Worst values (maximum)
+        
+        x_range = np.arange(threshold, threshold+len(mean))
+        
+        ax.plot(x_range, mean, linestyle=ls, linewidth=3, color=c, label=name)
+
+        ax.fill_between(x_range, best, worst, facecolor=c, alpha=0.3)
+
+    ax.set_xlabel(x_label, fontsize=25)
+    ax.set_ylabel(objective_name, fontsize=25)
+    ax.set_title(title)
+    ax.grid(True)
+    if legend:
+        ax.legend(ncol=1, loc='best', framealpha=0.3)
+
+    if yscale is not None:
+        plt.yscale(yscale)
+
+    if ylim:
+        ax.set_ylim(ylim)
+
+    if path_to_save is not None:
+        plt.savefig(path_to_save, bbox_inches='tight', format='pdf')
+
+    return fig, ax
+
+def plot_objectives_worst(objectives, objective_var=None, path_to_save=None, thresholds=None,
+                            objective_name='', x_label='BO iterations',
+                            title='', color=None, linestyles=None, legend=True, yscale=None, ylim=None):
+    if color is None:
+        if len(objectives) < 9:
+            color = cm.Dark2(np.linspace(0, 1, 8))
+        else:
+            color = cm.Dark2(np.linspace(0, 1, len(objectives)))
+
+    if linestyles is None:
+        if len(objectives) < 5:
+            linestyles = ['-', '--', '-.', 'dotted']
+        else:
+            linestyles = ['-', '--', '-.', 'dotted']*len(objectives)
+
+    fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+    for k, name in enumerate(objectives.keys()):
+        if isinstance(linestyles, dict):
+            ls = linestyles[name]
+        else:
+            ls = linestyles[k]
+
+        if isinstance(color, dict):
+            c = color[name]
+        else:
+            c = color[k]
+
+        if thresholds is not None:
+            threshold = thresholds[name]
+        else:
+            threshold = 0
+        objective = objectives[name]
+        objective = objective[threshold:]
+
+        if name == 'RAHBO-US $\\alpha=2$ iter 1':
+            name = 'RAHBO-US $\\alpha=2$'
+        
+        # Ensure we're working with numpy arrays
+        if hasattr(objective, 'cpu'):
+            objective = objective.cpu().numpy()
+        else:
+            objective = np.array(objective)
+        
+        worst = np.min(objective, axis=1)  # Worst values (maximum)
+        
+        x_range = np.arange(threshold, threshold+len(worst))
+        
+        ax.plot(x_range, worst, linestyle=ls, linewidth=3, color=c, label=name)
+
+
+    ax.set_xlabel(x_label, fontsize=25)
+    ax.set_ylabel(objective_name, fontsize=25)
+    ax.set_title(title)
+    ax.grid(True)
+    if legend:
+        ax.legend(ncol=1, loc='best', framealpha=0.3)
+
+    if yscale is not None:
+        plt.yscale(yscale)
+
+    if ylim:
+        ax.set_ylim(ylim)
+
+    if path_to_save is not None:
+        plt.savefig(path_to_save, bbox_inches='tight', format='pdf')
+
+    return fig, ax
+
 
 # Synthetic
 def plot_hist_f_rho(df, bw_f=0.3, bw_rho=0.1, title='', path_to_save=None,
@@ -225,7 +380,7 @@ def plot_hist_f_rho(df, bw_f=0.3, bw_rho=0.1, title='', path_to_save=None,
 
 def plot_f_rho(df, errorbar_mode=True, title='', path_to_save=None,
                 color=None, linestyles=None, flims=None, rholims=None,
-               labels=None, if_legend=True, linewidths=None):
+               labels=None, if_legend=True, linewidths=None, log_scale=False):
     """
     Plots f-rho for reported values over restarts in one plot
 
@@ -276,6 +431,8 @@ def plot_f_rho(df, errorbar_mode=True, title='', path_to_save=None,
                     markersize=20, label=mname, color=color[i])
             ax.plot(df[mname]['rhos'], df[mname]['fs'], 'o',
                     markersize=5, alpha=0.8, color=color[i])
+    if log_scale:
+        ax.set_xscale('log')
 
     if flims is not None:
         ax.set_ylim(flims)
